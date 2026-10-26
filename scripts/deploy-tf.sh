@@ -1,25 +1,30 @@
 #!/usr/bin/env bash
-# Розгортання у Floci через Terraform (шлях C): init → validate → plan → apply.
-# Використання: scripts/deploy-tf.sh [plan|apply|destroy]   (за замовчуванням: plan)
-#
-# Зверніть увагу: за замовчуванням ЛИШЕ plan. Це той самий принцип, що на слайдах
-# 32 та 43: читаємо diff, і тільки потім робимо apply.
+# Local Floci only. Review the saved plan before applying it.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/env.sh
-command -v terraform >/dev/null || command -v tofu >/dev/null || { echo "✗ Потрібен Terraform ≥1.5 або OpenTofu"; exit 1; }
-TF=$(command -v terraform || command -v tofu)
-
-[[ -f build/webhook.zip ]] || { echo "✗ Спершу: make build"; exit 1; }
-cd terraform
+TF=$(command -v terraform || command -v tofu) || { echo "Terraform or OpenTofu is required" >&2; exit 1; }
+mkdir -p "$LESSON12_RUNTIME_DIR"
+RUNTIME=$(cd "$LESSON12_RUNTIME_DIR" && pwd)
+PLAN="$RUNTIME/terraform.plan"
+for fn in webhook thumbnail reader; do
+  [[ -f "build/$fn.zip" ]] || { echo "Run make build first" >&2; exit 1; }
+done
 mode=${1:-plan}
-$TF init -input=false
-$TF validate
+case "$mode" in plan|apply|destroy) ;; *) echo "Expected plan, apply or destroy" >&2; exit 1 ;; esac
+"$TF" -chdir=terraform init -input=false -backend-config="path=$RUNTIME/terraform.tfstate"
+"$TF" -chdir=terraform validate
 case "$mode" in
-  plan)    $TF plan -input=false
-           echo; echo "ℹ️  Це лише plan. Прочитайте його, потім: scripts/deploy-tf.sh apply" ;;
-  apply)   $TF apply -input=false -auto-approve
-           echo; $TF output ;;
-  destroy) $TF destroy -input=false -auto-approve ;;
-  *) echo "Невідомий режим: $mode"; exit 1 ;;
+  plan)
+    "$TF" -chdir=terraform plan -input=false -out="$PLAN"
+    echo "Review: terraform -chdir=terraform show $PLAN"
+    ;;
+  apply)
+    [[ -f "$PLAN" ]] || { echo "Run make plan-tf and review the plan first" >&2; exit 1; }
+    "$TF" -chdir=terraform apply -input=false "$PLAN"
+    "$TF" -chdir=terraform output
+    ;;
+  destroy)
+    "$TF" -chdir=terraform destroy
+    ;;
 esac

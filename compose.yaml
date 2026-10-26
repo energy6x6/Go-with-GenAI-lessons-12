@@ -1,20 +1,16 @@
-# Floci — локальний емулятор AWS (https://floci.io/floci/). Порт 4566.
-# Lambda у Floci виконується у СПРАВЖНІХ Docker-контейнерах, тому потрібен
-# Docker-сокет. Акаунт AWS і токени не потрібні.
+# Floci 2.3.0, pinned for reproducibility; Lambda uses the local Docker socket.
 services:
   floci:
-    image: floci/floci:latest          # для відтворюваності закріпіть версію: floci/floci:x.y.z
-    container_name: floci
-    user: root                         # доступ до /var/run/docker.sock
+    image: floci/floci@sha256:e0b292df4dc9559b7b1bf4f51bdda4bb8e269276236438cd03cae661260ea8a9
+    container_name: lesson12-floci
+    user: root
     ports:
-      - "4566:4566"
+      - "${FLOCI_BIND_ADDRESS:-127.0.0.1}:${FLOCI_PORT:-4566}:4566"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock   # запуск Lambda-контейнерів
-      - ./.floci-data:/app/data                     # стан переживає перезапуск
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${FLOCI_DATA_DIR:-../.lesson12-runtime/floci}:/app/data
     environment:
+      FLOCI_HOSTNAME: floci
+      FLOCI_SERVICES_LAMBDA_DOCKER_HOST_OVERRIDE: floci
       FLOCI_DEFAULT_REGION: us-east-1
-      FLOCI_STORAGE_MODE: hybrid                    # memory | persistent | hybrid | wal
-      # Типові ліміти Lambda у Floci — 128 МБ / 3 с; наші функції задають свої явно.
-      # Якщо запити з хоста повертають URL з "localhost", а з інших контейнерів
-      # потрібне ім'я сервісу — розкоментуйте:
-      # FLOCI_HOSTNAME: floci
+      FLOCI_STORAGE_MODE: hybrid

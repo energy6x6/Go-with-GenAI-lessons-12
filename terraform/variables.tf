@@ -1,3 +1,13 @@
+variable "project_name" {
+  description = "Prefix shared by the lesson's Lambda functions and API."
+  type        = string
+  default     = "libratrack"
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9-]{0,39}$", var.project_name))
+    error_message = "Use a lowercase prefix of 1 to 40 letters, digits or hyphens."
+  }
+}
+
 variable "region" {
   description = "Регіон AWS (у Floci працює будь-який опублікований регіон)."
   type        = string

@@ -1,0 +1,33 @@
+name: Lesson 12 checks
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  go-and-terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Check formatting
+        run: test -z "$(gofmt -l cmd)"
+      - name: Vet and test
+        run: |
+          go vet ./...
+          go test -race -count=1 ./...
+      - name: Build Lambda archives
+        run: make build
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.17.0
+      - name: Check Terraform
+        run: |
+          terraform -chdir=terraform fmt -check
+          terraform -chdir=terraform init -backend=false -input=false
+          terraform -chdir=terraform validate

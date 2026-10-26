@@ -4,6 +4,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/env.sh
+if [[ -f "$LESSON12_RUNTIME_DIR/terraform.tfstate" ]]; then
+  echo "Resources are managed by Terraform. Use scripts/deploy-tf.sh, not this legacy CLI helper." >&2
+  exit 1
+fi
 
 [[ -f build/webhook.zip && -f build/thumbnail.zip ]] || { echo "✗ Спершу: make build"; exit 1; }
 

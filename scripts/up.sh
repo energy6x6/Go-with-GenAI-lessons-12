@@ -4,6 +4,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/env.sh
+if [[ -n "$LESSON12_DOCKER_WRAPPER" ]]; then
+  echo "Floci uses a remote Docker host. Start this Compose file on that host, then use the forwarded AWS endpoint." >&2
+  exit 1
+fi
 
 command -v docker >/dev/null || { echo "✗ Потрібен Docker"; exit 1; }
 docker info >/dev/null 2>&1   || { echo "✗ Docker daemon не запущений"; exit 1; }

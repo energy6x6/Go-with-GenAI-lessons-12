@@ -25,6 +25,19 @@ Resources:
             Path: /webhook
             Method: post
 
+  ReaderFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      CodeUri: ..
+      Events:
+        NormalizeReader:
+          Type: Api
+          Properties:
+            Path: /readers/normalize
+            Method: post
+
   ThumbnailFunction:
     Type: AWS::Serverless::Function
     Metadata:
