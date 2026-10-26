@@ -3,6 +3,10 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 source scripts/env.sh
+if [[ -f "$LESSON12_RUNTIME_DIR/terraform.tfstate" ]]; then
+  echo "Resources are managed by Terraform. Use scripts/deploy-tf.sh, not this legacy CLI helper." >&2
+  exit 1
+fi
 
 echo "▶ API Gateway"
 for id in $(awsf apigateway get-rest-apis --query "items[?name=='${API_NAME}'].id" --output text 2>/dev/null); do

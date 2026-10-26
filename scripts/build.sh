@@ -15,16 +15,17 @@ command -v zip >/dev/null || { echo "✗ Потрібна утиліта zip"; e
 echo "▶ Збірка під linux/${GOARCH_LAMBDA} (Lambda architecture: ${LAMBDA_ARCH})"
 rm -rf build && mkdir -p build
 
-for fn in webhook thumbnail; do
+for fn in webhook thumbnail reader; do
   mkdir -p "build/${fn}"
-  # Кожен прапорець працює на холодний старт (слайд 16):
+  # Компактна, статична й відтворювана збірка (слайд 16):
   #   CGO_ENABLED=0       — статичний бінарник без залежності від libc
   #   -tags lambda.norpc  — прибирає застарілий RPC-режим aws-lambda-go (менший бінарник)
   #   -ldflags "-s -w"    — без таблиці символів і DWARF
   GOOS=linux GOARCH="${GOARCH_LAMBDA}" CGO_ENABLED=0 \
-    go build -tags lambda.norpc -ldflags="-s -w" \
+    go build -trimpath -buildvcs=false -tags lambda.norpc -ldflags="-s -w" \
       -o "build/${fn}/bootstrap" "./cmd/${fn}"
   # Ім'я `bootstrap` — вимога provided.al2023 (слайд 15).
+  touch -t 198001010000 "build/${fn}/bootstrap"
   (cd "build/${fn}" && zip -q -X "../${fn}.zip" bootstrap)
   size=$(du -h "build/${fn}.zip" | cut -f1)
   echo "  ✓ build/${fn}.zip  (${size})"

@@ -1,5 +1,6 @@
 # LibraTrack · Lambda demo (Урок 11). `make help` — список цілей.
 SHELL := /usr/bin/env bash
+export PATH := $(CURDIR)/.tools/bin:$(PATH)
 
 .DEFAULT_GOAL := help
 .PHONY: help test build up up-ephemeral down deploy-cli deploy-tf plan-tf smoke bench cleanup clean sam-build sam-invoke sam-api
@@ -48,14 +49,19 @@ clean: ## Видалити build/ і локальні артефакти
 # ── AWS SAM CLI (слайд 20). Не потребує Floci — лише Docker. ────────────────
 # SAM викликає ці цілі як `make build-<LogicalId>`.
 build-WebhookFunction:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -ldflags="-s -w" -o $(ARTIFACTS_DIR)/bootstrap ./cmd/webhook
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -buildvcs=false -tags lambda.norpc -ldflags="-s -w" -o $(ARTIFACTS_DIR)/bootstrap ./cmd/webhook
 build-ThumbnailFunction:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags lambda.norpc -ldflags="-s -w" -o $(ARTIFACTS_DIR)/bootstrap ./cmd/thumbnail
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -buildvcs=false -tags lambda.norpc -ldflags="-s -w" -o $(ARTIFACTS_DIR)/bootstrap ./cmd/thumbnail
+
+build-ReaderFunction:
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -buildvcs=false -tags lambda.norpc -ldflags="-s -w" -o $(ARTIFACTS_DIR)/bootstrap ./cmd/reader
 
 sam-build: ## sam build
-	sam build -t sam/template.yaml
+	sam build --build-in-source -t sam/template.yaml
 sam-invoke: sam-build ## sam local invoke на events/valid.json та invalid.json
 	sam local invoke WebhookFunction -e events/valid.json
 	sam local invoke WebhookFunction -e events/invalid.json
+	sam local invoke ReaderFunction -e events/reader/valid.json
+	sam local invoke ReaderFunction -e events/reader/invalid.json
 sam-api: sam-build ## sam local start-api → http://127.0.0.1:3000
 	sam local start-api

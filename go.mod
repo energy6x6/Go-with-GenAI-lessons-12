@@ -1,4 +1,4 @@
-module github.com/softserve-academy/libratrack-lambda-demo
+module github.com/energy6x6/Go-with-GenAI-lessons-12
 
 go 1.22
 
@@ -25,5 +25,4 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.26.7 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.30.7 // indirect
 	github.com/aws/smithy-go v1.20.4 // indirect
-	github.com/jmespath/go-jmespath v0.4.0 // indirect
 )

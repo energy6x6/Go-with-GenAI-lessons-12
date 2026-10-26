@@ -28,4 +28,6 @@ crash.log
 # Additional exclusions from the supplied demo
 terraform/.terraform/
 terraform/*.tfstate*
-terraform/.terraform.lock.hcl
+
+# Local CLI installations
+.tools/

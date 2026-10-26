@@ -1,0 +1,13 @@
+{
+  "resource": "/readers/normalize",
+  "path": "/readers/normalize",
+  "httpMethod": "POST",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "requestContext": {
+    "requestId": "reader-invalid"
+  },
+  "body": "{\"name\": \"   \", \"email\": \"not-an-email\"}",
+  "isBase64Encoded": false
+}

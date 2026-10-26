@@ -1,61 +1,26 @@
-# Розв'язання проблем
+# Розв’язання проблем Lesson 12
 
-Спершу завжди: **`docker compose logs --tail 100 floci`** — там причина більшості збоїв.
+Використовуйте актуальні команди з кореневого README. Статус автора архіву
+в `ORIGINAL_DEMO_README.md` є історичним контекстом.
 
-## Запуск Floci
-
-| Симптом | Причина | Що робити |
-|---|---|---|
-| `Cannot connect to the Docker daemon` | Docker не запущений | Запустіть Docker Desktop / `sudo systemctl start docker` |
-| `permission denied … /var/run/docker.sock` | Немає доступу до сокета | У `compose.yaml` вже `user: root`. На Linux додайте себе до групи: `sudo usermod -aG docker $USER` і перелогіньтесь |
-| `port is already allocated` (4566) | Інший Floci/LocalStack | `docker ps`, зупиніть зайвий контейнер або змініть порт у `compose.yaml` та `AWS_ENDPOINT_URL` |
-| Rootless Podman | Інша мережева схема | Див. розділ «Running on Podman» у документації Floci; можливо потрібен `FLOCI_SERVICES_LAMBDA_DOCKER_HOST_OVERRIDE` |
-
-## Виклик функцій
-
-| Симптом | Причина | Що робити |
-|---|---|---|
-| Перший виклик «висить» хвилини | Floci тягне образ `public.ecr.aws/lambda/provided:al2023` | `docker pull public.ecr.aws/lambda/provided:al2023` заздалегідь (це робить `make up`). Перевірте доступ до `public.ecr.aws` (VPN/проксі) |
-| `exec format error` / `Runtime exited` | Архітектура бінарника ≠ архітектура Docker-хоста | `source scripts/env.sh && make build && make deploy-cli`. Розділ 9 README |
-| `connect ECONNREFUSED <ip>:12000` | Lambda-контейнер не бачить Runtime API Floci | Задайте `FLOCI_SERVICES_LAMBDA_DOCKER_HOST_OVERRIDE` (ім'я/IP, доступні з контейнера) у `compose.yaml` |
-| `Task timed out after 3.00 seconds` | Не задано `timeout` (типово 3 с) | Задайте `--timeout` / `timeout =`; скрипти це вже роблять |
-| Функція повертає зміни кодової бази не одразу | «Теплий» контейнер зі старим кодом | `make deploy-cli` (оновить код), або видаліть контейнер: `docker ps -aq --filter name=libratrack-webhook \| xargs -r docker rm -f` |
-| `502 Bad Gateway` від API | Функція повернула `error` або впала в паніку | Дивіться логи контейнера (`docker logs`). Для **очікуваних** помилок повертайте звичайну відповідь з 4xx (слайд 19) |
-| `Unable to locate credentials` | Не підключено змінні | `source scripts/env.sh` |
-| `Could not connect to the endpoint URL` | Floci не запущено / інший порт | `make up`, `curl -i localhost:4566` |
-
-## S3-тригер
-
-- Перевірте конфігурацію: `awsf s3api get-bucket-notification-configuration --bucket libratrack-covers`.
-- Не спрацьовує автоматично? Це нормально для демо — `make smoke` тоді викликає
-  `libratrack-thumbnail` вручну з `events/s3_put.json` (формат події ідентичний).
-- Ключ у події URL-кодований (`my+cover.jpg`) — функція це враховує (`url.QueryUnescape`).
-- `AccessDenied` / `NoSuchBucket` у логах функції — бакети створено? `awsf s3 ls`.
-
-## Terraform
-
-| Симптом | Що робити |
+| Симптом | Перевірка та дія |
 |---|---|
-| `Failed to query available provider packages` | `terraform init` потребує Інтернету для завантаження провайдера `hashicorp/aws` |
-| `Error: … endpoint … connection refused` для якогось сервісу | Додайте сервіс у блок `endpoints` у `terraform/provider.tf` |
-| `already exists` (бакет/роль/функція) | Раніше розгортали через CLI: `make cleanup`, потім `make deploy-tf` |
-| `no such file … build/webhook.zip` | `make build` перед Terraform |
-| Зміни коду не потрапляють у функцію | `source_code_hash` змінюється разом із zip — перезберіть (`make build`) і повторіть `apply` |
+| Docker daemon недоступний | Запустіть Docker Desktop або Docker Engine у VM; перевірте `docker version` |
+| Floci на Docker Desktop 20.10 повертає `java.net.BindException: Permission denied` при Lambda invoke | SAM може працювати незалежно; для Floci використайте Ubuntu VM з актуальним Docker Engine |
+| Lambda container запускається, але invocation timeout | Перевірте callback Runtime API та спільну мережу. Compose задає `FLOCI_SERVICES_LAMBDA_DOCKER_HOST_OVERRIDE=floci`, щоб не обирати IP іншої VPC-мережі |
+| Порт 4566 вже зайнятий | Створіть окремий Compose-проєкт із `FLOCI_PORT=4567`; узгодьте AWS endpoint, NAT forwarding та Terraform variable |
+| Mac використовує Floci у VirtualBox NAT | Передайте порт гостя на `127.0.0.1` хоста; `AWS_ENDPOINT_URL` має вказувати на переспрямований порт |
+| `aws`, `sam` або `terraform` не знайдено | Встановіть CLI або додайте їх у `.tools/bin`; виконайте `source scripts/env.sh` |
+| `exec format error` | Узгодьте Docker host architecture, Linux GOARCH, SAM Architectures та Terraform lambda_architecture |
+| Terraform просить reconfigure backend | Перевірте `LESSON12_RUNTIME_DIR` і один раз виконайте `TF_CLI_ARGS_init=-reconfigure make plan-tf` |
+| Terraform показує відсутні ресурси іншого середовища | Не змішуйте state між емуляторами. Для кожного окремого Floci потрібна власна runtime-папка |
+| `Saved plan is stale` | Стан або код змінився: повторіть `make plan-tf`, прочитайте план, потім apply |
+| S3 thumbnail не з’явився | Перевірте notification, prefix covers/, OUTPUT_BUCKET та логи thumbnail. Smoke завершується FAIL; ручний invoke не замінює доказ автоматичного тригера |
+| S3 API має неправильний endpoint | Lambda має бачити Floci через Docker DNS, а клієнт S3 використовує path-style; перевірте injected AWS_ENDPOINT_URL |
+| Legacy CLI helper відмовляється працювати | Ресурсами вже керує Terraform. Використовуйте збережений plan і не змішуйте ownership |
+| Bench не знаходить warm container | Перевірте Docker host/SSH wrapper та окрему мережу lesson12-floci; не запускайте ephemeral mode під час paired cold/warm |
 
-## Go
-
-| Симптом | Що робити |
-|---|---|
-| `missing go.sum entry` | `go mod tidy` (скрипти роблять це на першому запуску) |
-| `requires go >= …` | Оновіть Go до 1.22+ |
-| Хочете свіжі версії SDK | `go get -u ./... && go mod tidy`; тоді може знадобитися новіший Go |
-
-## Повне скидання
-
-```bash
-make cleanup
-make down
-rm -rf .floci-data build .api-id terraform/.terraform terraform/terraform.tfstate*
-docker ps -aq --filter name=libratrack | xargs -r docker rm -f
-docker volume prune --filter label=floci=true
-```
+Логи та результати зберігаються поза checkout у `LESSON12_EVIDENCE_DIR`.
+Для перегляду поточного Floci виконайте `docker logs --tail 100 lesson12-floci`
+на тому Docker host, де він запущений. Не видаляйте runtime/state/volume до
+збереження доказів; `make down` зупиняє лише локальний Compose-проєкт.
