@@ -1,0 +1,31 @@
+# Local settings and secrets
+.DS_Store
+.env
+.env.*
+!.env.example
+terraform.tfvars
+*.auto.tfvars
+
+# Build and local runtime data
+build/
+.aws-sam/
+.floci-data/
+.api-id
+*.zip
+*.test
+coverage.out
+coverage.html
+out.json
+thumb.png
+
+# Terraform local state and plans
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+
+# Additional exclusions from the supplied demo
+terraform/.terraform/
+terraform/*.tfstate*
+terraform/.terraform.lock.hcl
